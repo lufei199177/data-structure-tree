@@ -1,0 +1,135 @@
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author lufei
+ * @date 2018-01-12
+ * @desc 平衡树(Balance Tree ， BT) 指的是，任意节点的子树的高度差都小于等于1
+ */
+public class MyAVLTree<K, V> {
+    private Node<K, V> root;
+
+    public void put(K key, V value) {
+        root = put(key, value, root);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Node<K, V> put(K key, V value, Node<K, V> node) {
+        if (node == null) {
+            return new Node<K, V>(key, value);
+        } else if (((Comparable<K>) key).compareTo(node.key) >= 0) {
+            node.right = put(key, value, node.right);
+            node.rightDeep = (node.right.leftDeep > node.right.rightDeep
+                    ? node.right.leftDeep : node.right.rightDeep) + 1;
+            if (node.leftDeep - node.rightDeep < -1) {
+                if (node.right.leftDeep - node.right.rightDeep > 0) {
+                    node.right = node.right.turnRight();
+                }
+                node = node.turnLeft();
+            }
+        } else {
+            node.left = put(key, value, node.left);
+            node.leftDeep = (node.left.leftDeep > node.left.rightDeep
+                    ? node.left.leftDeep : node.left.rightDeep) + 1;
+            if (node.leftDeep - node.rightDeep > 1) {
+                if (node.left.rightDeep - node.left.leftDeep > 0) {
+                    node.left = node.left.turnLeft();
+                }
+                node = node.turnRight();
+            }
+        }
+        return node;
+    }
+
+    public void print() {
+        List<Node<K, V>> nodes = new ArrayList<>();
+        nodes.add(root);
+        printNodes(nodes);
+    }
+
+    private void printNodes(List<Node<K, V>> nodes) {
+        List<Node<K, V>> list = new ArrayList<>();
+        for (Node<K, V> node : nodes) {
+            System.out.print(node.key + " ");
+            Node<K, V> left = node.left;
+            Node<K, V> right = node.right;
+            if (left != null) {
+                list.add(left);
+            }
+            if (right != null) {
+                list.add(right);
+            }
+        }
+        System.out.println();
+        if (list.size() > 0) {
+            printNodes(list);
+        }
+    }
+
+    private static class Node<K, V> {
+        private K key;
+
+        private V value;
+
+        private Node<K, V> left;
+
+        private Node<K, V> right;
+
+        private int leftDeep;
+
+        private int rightDeep;
+
+        public Node(K key, V value) {
+            this.key = key;
+            this.value = value;
+            this.left = null;
+            this.right = null;
+        }
+
+        public Node<K, V> turnRight() {
+            Node<K, V> t = left;
+            Node<K, V> temp = t.right;
+            t.right = this;
+
+            if (temp != null) {
+                this.leftDeep = (temp.leftDeep > temp.rightDeep ? temp.leftDeep
+                        : temp.rightDeep) + 1;
+            } else {
+                this.leftDeep = 0;
+            }
+
+            this.left = temp;
+            t.rightDeep = (this.leftDeep > this.rightDeep ? this.leftDeep
+                    : this.rightDeep) + 1;
+            return t;
+        }
+
+        public Node<K, V> turnLeft() {
+            Node<K, V> t = right;
+            Node<K, V> temp = t.left;
+
+            t.left = this;
+            if (temp != null) {
+                this.rightDeep = (temp.leftDeep > temp.rightDeep ? temp.leftDeep
+                        : temp.rightDeep) + 1;
+            } else {
+                this.rightDeep = 0;
+            }
+            this.right = temp;
+            t.leftDeep = (this.leftDeep > this.rightDeep ? this.leftDeep
+                    : this.rightDeep) + 1;
+            return t;
+        }
+
+        public String toString() {
+            StringBuilder sb = new StringBuilder(
+                    "key:" + key + ",value:" + value);
+            sb.append(",left:" + (left == null ? "null" : left.key));
+            sb.append(",right:" + (right == null ? "null" : right.key));
+            sb.append(",leftDeep:" + leftDeep);
+            sb.append(",rightDeep:" + rightDeep);
+            return sb.toString();
+        }
+    }
+
+}
