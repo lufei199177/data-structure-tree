@@ -1,0 +1,346 @@
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @author lufei
+ * @date 2018-01-12
+ * @desc 红黑树是每个节点都带有颜色属性的二叉查找树，颜色或红色或黑色。在二叉查找树强制一般要求以外，
+ * 对于任何有效的红黑树我们增加了如下的额外要求:
+ * 性质1. 节点是红色或黑色。
+ * 性质2. 根节点是黑色。
+ * 性质3.所有叶子都是黑色。（叶子是NUIL节点）
+ * 性质4. 每个红色节点的两个子节点都是黑色。（从每个叶子到根的所有路径上不能有两个连续的红色节点）
+ * 性质5.. 从任一节点到其每个叶子的所有路径都包含相同数目的黑色节点。
+ */
+public class RedBlackTree<K, V> {
+    private Node<K, V> root;
+
+    public void put(K key, V value) {
+        Node<K, V> node = new Node<K, V>(key, value, Color.red);
+
+        if (root == null) {
+            root = node;
+            root.color = Color.black;
+            return;
+        }
+        Node<K, V> temp = root;
+        Node<K, V> parent = temp;
+        int compare = 0;
+        do {
+            parent = temp;
+            compare = ((Comparable<K>) key).compareTo(temp.key);
+            if (compare > 0) {
+                temp = temp.right;
+            } else if (compare < 0) {
+                temp = temp.left;
+            } else {
+                temp.value = value;
+                return;
+            }
+        } while (temp != null);
+
+        node.parent = parent;
+        if (compare > 0) {
+            parent.right = node;
+        } else {
+            parent.left = node;
+        }
+        toBalance(node, true);
+        //print();
+        //System.out.println();
+    }
+
+    private void toBalance(Node<K, V> node, boolean flag) {
+        Node<K, V> parent = node.parent;
+        if (node.color == Color.red && parent != null
+                && parent.color == Color.red) {
+            parent.color = Color.black;
+            Node<K, V> grandFather = parent.parent;
+            if (grandFather != null) {
+                if (grandFather.left == parent) {
+                    Node<K, V> uncle = grandFather.right;
+                    if (uncle != null && uncle.color == Color.red) {
+                        uncle.color = Color.black;
+                        if (flag) {
+                            grandFather.color = Color.red;
+                        }
+
+                    } else {
+                        if (node == parent.right) {
+                            parent = parent.turnLeft();
+                        }
+                        if (grandFather == root) {
+                            grandFather = grandFather.turnRight();
+                            root = grandFather;
+                        } else {
+                            grandFather = grandFather.turnRight();
+                        }
+                    }
+                } else {
+                    Node<K, V> uncle = grandFather.left;
+                    if (uncle != null && uncle.color == Color.red) {
+                        uncle.color = Color.black;
+                        if (flag) {
+                            grandFather.color = Color.red;
+                        }
+                    } else {
+                        if (node == parent.left) {
+                            parent = parent.turnRight();
+                        }
+                        if (grandFather == root) {
+                            grandFather = grandFather.turnLeft();
+                            root = grandFather;
+                        } else {
+                            grandFather = grandFather.turnLeft();
+                        }
+                    }
+                }
+                toBalance(grandFather, flag);
+            }
+        }
+    }
+
+    public V remove(K key) {
+        Node<K, V> target = getNode(key);
+        if (target != null) {
+            Node<K, V> replaceNode = getReplaceNode(target);
+            V value = target.value;
+            target.key = replaceNode.key;
+            target.value = replaceNode.value;
+
+            if (replaceNode == root) {
+                root = null;
+            } else {
+                boolean flag = false;
+                if (replaceNode.parent.left == replaceNode) {
+                    flag = true;
+                }
+                if (replaceNode.color == Color.red) {
+                    replaceNodeIsRed(replaceNode, flag);
+                } else {
+                    if (replaceNode.right != null) {
+                        replaceNodeHadRight(replaceNode, flag);
+                    } else {
+                        replaceNodeIsBlack(replaceNode, flag);
+                    }
+                }
+            }
+
+            replaceNode.parent = null;
+            replaceNode.left = null;
+            replaceNode.right = null;
+            return value;
+        }
+        return null;
+    }
+
+    private void replaceNodeIsBlack(Node<K, V> replaceNode, boolean flag) {
+        Node<K, V> brother = null;
+        if (flag) {
+            brother = replaceNode.parent.right;
+            replaceNode.parent.left = null;
+        } else {
+            brother = replaceNode.parent.left;
+            replaceNode.parent.right = null;
+        }
+
+        if (brother.hadChild()) {
+            if (flag) {
+                if (!brother.hadRight()) {
+                    brother.turnRight();
+                }
+                replaceNode.parent.turnLeft();
+            } else {
+                if (!brother.hadLeft()) {
+                    brother.turnLeft();
+                }
+                replaceNode.parent.turnRight();
+            }
+        } else {
+            if (replaceNode.parent.color == Color.red) {
+                replaceNode.parent.color = Color.black;
+                brother.color = Color.red;
+            } else {
+                Node<K, V> grandFather = replaceNode.parent.parent;
+                Node<K, V> parent = replaceNode.parent;
+                Node<K, V> uncle = null;
+                brother.color = Color.red;
+                if (grandFather.left == parent) {
+                    uncle = grandFather.right;
+                    if (!uncle.right.hadChild()) {
+                        uncle.turnRight();
+                    }
+                    grandFather.turnLeft();
+                } else {
+                    uncle = grandFather.left;
+                    if (!uncle.left.hadChild()) {
+                        uncle.turnLeft();
+                    }
+                    grandFather.turnRight();
+                }
+            }
+        }
+
+    }
+
+    private void replaceNodeHadRight(Node<K, V> replaceNode, boolean flag) {
+        replaceNode.right.parent = replaceNode.parent;
+        replaceNode.right.color = Color.black;
+        if (flag) {
+            replaceNode.parent.left = replaceNode.right;
+        } else {
+            replaceNode.parent.right = replaceNode.right;
+        }
+    }
+
+    private void replaceNodeIsRed(Node<K, V> replaceNode, boolean flag) {
+        if (flag) {
+            replaceNode.parent.left = null;
+        } else {
+            replaceNode.parent.right = null;
+        }
+    }
+
+    private Node<K, V> getReplaceNode(Node<K, V> node) {
+        if (node.right != null) {
+            Node<K, V> temp = node.right;
+            while (temp.left != null) {
+                temp = temp.left;
+            }
+            return temp;
+        } else if (node.left != null) {
+            return node.left;
+        } else {
+            return node;
+        }
+    }
+
+    private Node<K, V> getNode(K key) {
+        Node<K, V> target = root;
+        while (target != null) {
+            int compare = ((Comparable<K>) key).compareTo(target.key);
+            if (compare > 0) {
+                target = target.right;
+            } else if (compare < 0) {
+                target = target.left;
+            } else {
+                break;
+            }
+        }
+        return target;
+    }
+
+    public void print() {
+        List<Node<K, V>> nodes = new ArrayList<>();
+        nodes.add(root);
+        printNodes(nodes);
+    }
+
+    private void printNodes(List<Node<K, V>> nodes) {
+        List<Node<K, V>> list = new ArrayList<>();
+        for (Node<K, V> node : nodes) {
+            System.out.print(node.key + " ");
+            Node<K, V> left = node.left;
+            Node<K, V> right = node.right;
+            if (left != null) {
+                list.add(left);
+            }
+            if (right != null) {
+                list.add(right);
+            }
+        }
+        System.out.println();
+        if (list.size() > 0) {
+            printNodes(list);
+        }
+
+    }
+
+    private static class Node<K, V> {
+        private K key;
+
+        private V value;
+
+        private Color color;
+
+        private Node<K, V> left;
+
+        private Node<K, V> right;
+
+        private Node<K, V> parent;
+
+        public Node(K key, V value, Color color) {
+            super();
+            this.key = key;
+            this.value = value;
+            this.color = color;
+        }
+
+        public Node<K, V> turnLeft() {
+            this.right.parent = parent;
+            if (parent != null) {
+                if (this.parent.left == this) {
+                    this.parent.left = this.right;
+                } else {
+                    this.parent.right = this.right;
+                }
+            }
+            this.color = Color.red;
+            this.parent = right;
+            this.right = this.parent.left;
+            if (this.right != null) {
+                this.right.parent = this;
+            }
+            this.parent.left = this;
+            this.parent.color = Color.black;
+
+            return this.parent;
+        }
+
+        public Node<K, V> turnRight() {
+            this.left.parent = parent;
+            if (parent != null) {
+                if (this.parent.right == this) {
+                    this.parent.right = this.left;
+                } else {
+                    this.parent.left = this.left;
+                }
+            }
+            this.color = Color.red;
+            this.parent = left;
+            this.left = this.parent.right;
+            if (this.left != null) {
+                this.left.parent = this;
+            }
+            this.parent.right = this;
+            this.parent.color = Color.black;
+            return this.parent;
+        }
+
+        private boolean hadChild() {
+            if (left == null && right == null) {
+                return false;
+            }
+            return true;
+        }
+
+        private boolean hadRight() {
+            return right == null ? false : true;
+        }
+
+        private boolean hadLeft() {
+            return left == null ? false : true;
+        }
+
+        public String toString() {
+            StringBuilder sb = new StringBuilder("key:" + key);
+            //sb.append(",value:"+value);
+            sb.append(",color:" + color);
+            sb.append(",left:" + (left == null ? null : left.key));
+            sb.append(",right:" + (right == null ? null : right.key));
+            sb.append(",parent:" + (parent == null ? null : parent.key));
+            return sb.toString();
+        }
+    }
+}
